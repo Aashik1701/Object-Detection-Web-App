@@ -72,7 +72,7 @@ def check_source(source):
 
 @app.route("/", methods=["GET", "POST"])
 def predict_img():
-    global imgpath, its_image, video_path
+    global imgpath, its_image, video_path, device
     if request.method == "POST":
         if 'text' in request.form:
             video_link = request.form['text']
@@ -104,7 +104,7 @@ def predict_img():
             frame = cv2.imread(filepath)
             # Inference
             results = MODEL.predict(
-                frame, show=False, verbose=False, save=False, device="cuda:0", conf=0.5
+                frame, show=False, verbose=False, save=False, device=device, conf=0.5
             )
 
             # Check if robot is detected
