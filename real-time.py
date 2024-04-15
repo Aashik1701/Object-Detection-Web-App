@@ -7,12 +7,14 @@ from pathlib import Path
 import urllib.parse
 from ultralytics import YOLO
 from utils import downloads
+from torch.cuda import is_available
 
 MODEL = YOLO('yolov8n.pt')
 IMG_FORMATS = {"bmp", "dng", "jpeg", "jpg", "mpo", "png", "tif", "tiff", "webp", "pfm"}  # image suffixes
 VID_FORMATS = {"asf", "avi", "gif", "m4v", "mkv", "mov", "mp4", "mpeg", "mpg", "ts", "wmv", "webm"}  # video suffixes
 COLORS = np.random.uniform(0, 255, size=(80, 3)) # random colors for different classes
 imgpath = None
+device =  "cuda:0" if is_available() else "cpu"
 video_path = None
 stream = False
 its_image = False
