@@ -1,0 +1,9 @@
+opencv-python
+numpy
+argparse
+flask
+os
+pathlib
+urllib
+ultralytics
+torch
