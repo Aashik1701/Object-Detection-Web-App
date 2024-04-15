@@ -139,7 +139,7 @@ def predict_img():
 
 
 def get_video_frame():
-    global imgpath, video_path
+    global imgpath, video_path, device
     if video_path==None:
         mp4_files = f"{PROJECT_PATH}/{imgpath}/output.mp4"
         video = cv2.VideoCapture(mp4_files)  # detected video path
@@ -171,7 +171,7 @@ def get_video_frame():
 
             # Inference
             results = MODEL.predict(
-                frame, show=False, verbose=False, save=False, device="cuda:0", conf=0.5
+                frame, show=False, verbose=False, save=False, device=device, conf=0.5
             )
 
             # Check if robot is detected
