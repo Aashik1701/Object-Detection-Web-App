@@ -1,0 +1,10 @@
+name: DetectionApp
+dependencies:
+  - argparse
+  - opencv-python
+  - os
+  - numpy
+  - flask
+  - urllib
+  - ultralytics
+  - torch
