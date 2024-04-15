@@ -83,6 +83,7 @@ def predict_img():
             imgpath, file_extension = (filename.rsplit('.', 1)[0].lower(), filename.rsplit('.', 1)[1].lower())
         if 'file' in request.files:
             f = request.files['file']
+            basepath = os.path.dirname(__file__)
             filepath = os.path.join(DOWNLOADS_FOLDER, f.filename)
             f.save(filepath)
             predict_img.imgpath = f.filename
