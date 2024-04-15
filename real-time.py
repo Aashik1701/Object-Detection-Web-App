@@ -13,7 +13,7 @@ IMG_FORMATS = {"bmp", "dng", "jpeg", "jpg", "mpo", "png", "tif", "tiff", "webp",
 VID_FORMATS = {"asf", "avi", "gif", "m4v", "mkv", "mov", "mp4", "mpeg", "mpg", "ts", "wmv", "webm"}  # video suffixes
 COLORS = np.random.uniform(0, 255, size=(80, 3)) # random colors for different classes
 imgpath = None
-videopath = None
+video_path = None
 stream = False
 its_image = False
 PROJECT_PATH = "runs/detect"
@@ -70,7 +70,7 @@ def check_source(source):
 
 @app.route("/", methods=["GET", "POST"])
 def predict_img():
-    global imgpath, its_image
+    global imgpath, its_image, video_path
     if request.method == "POST":
         if 'text' in request.form:
             video_link = request.form['text']
@@ -128,51 +128,7 @@ def predict_img():
         
         elif file_extension in VID_FORMATS:
             its_image = False
-            video_path = filepath  # replace with your video path
-            cap = cv2.VideoCapture(video_path)
-            # Initialize variables
-            frame_width = int(cap.get(3))
-            frame_height = int(cap.get(4))
-            fps = cap.get(cv2.CAP_PROP_FPS)
-            out = cv2.VideoWriter(
-                f"{PROJECT_PATH}/{imgpath}/output.mp4",
-                cv2.VideoWriter_fourcc(*"mp4v"),
-                fps,
-                (frame_width, frame_height),
-            )
-            while True:
-                ret, frame = cap.read()
-                if not ret:
-                    break
-
-                # Inference
-                results = MODEL.predict(
-                    frame, show=False, verbose=False, save=False, device="cuda:0", conf=0.5
-                )
-
-                # Check if robot is detected
-                if results[0].boxes.cpu().numpy().xyxy.shape[0] != 0:
-                    # Show results on image
-                    boxes = results[0].boxes.cpu().numpy().xyxy.astype(int)
-                    labels = results[0].boxes.cpu().numpy().cls
-                    conf = results[0].boxes.cpu().numpy().conf
-                    for box, label, conf in zip(boxes, labels, conf):
-                        x1, y1, x2, y2 = box
-                        cv2.rectangle(frame, (x1, y1), (x2, y2), COLORS[int(label)], 2)
-                        cv2.putText(
-                            frame,
-                            MODEL.names[int(label)] + ": " + str(round(conf, 2)),
-                            (x1, y1 - 10),
-                            cv2.FONT_HERSHEY_SIMPLEX,
-                            2,
-                            COLORS[int(label)],
-                            2,
-                        )
-                out.write(frame)
-                cv2.imwrite(f"{PROJECT_PATH}/{imgpath}/output.jpg", frame)
-            
-            cap.release()
-            out.release()
+            video_path = filepath
             video_feed()
             return render_template('index.html')
 
@@ -180,18 +136,68 @@ def predict_img():
 
 
 def get_video_frame():
-    global imgpath
-    mp4_files = f"{PROJECT_PATH}/{imgpath}/output.mp4"
-    video = cv2.VideoCapture(mp4_files)  # detected video path
-    while True:
-        success, image = video.read()
-        if not success:
-            break
-        _, jpeg = cv2.imencode('.jpg', image) 
-    
-        yield (b'--frame\r\n'
-            b'Content-Type: image/jpeg\r\n\r\n' + jpeg.tobytes() + b'\r\n\r\n')   
-        # sleep(0.1)  #control the frame rate to display one frame every 100 milliseconds: 
+    global imgpath, video_path
+    if video_path==None:
+        mp4_files = f"{PROJECT_PATH}/{imgpath}/output.mp4"
+        video = cv2.VideoCapture(mp4_files)  # detected video path
+        while True:
+            success, image = video.read()
+            if not success:
+                break
+            _, jpeg = cv2.imencode('.jpg', image) 
+        
+            yield (b'--frame\r\n'
+                b'Content-Type: image/jpeg\r\n\r\n' + jpeg.tobytes() + b'\r\n\r\n')
+        video.release()
+    else:
+        cap = cv2.VideoCapture(video_path)
+        # Initialize variables
+        frame_width = int(cap.get(3))
+        frame_height = int(cap.get(4))
+        fps = cap.get(cv2.CAP_PROP_FPS)
+        out = cv2.VideoWriter(
+            f"{PROJECT_PATH}/{imgpath}/output.mp4",
+            cv2.VideoWriter_fourcc(*"mp4v"),
+            fps,
+            (frame_width, frame_height),
+        )
+        while True:
+            ret, frame = cap.read()
+            if not ret:
+                break
+
+            # Inference
+            results = MODEL.predict(
+                frame, show=False, verbose=False, save=False, device="cuda:0", conf=0.5
+            )
+
+            # Check if robot is detected
+            if results[0].boxes.cpu().numpy().xyxy.shape[0] != 0:
+                # Show results on image
+                boxes = results[0].boxes.cpu().numpy().xyxy.astype(int)
+                labels = results[0].boxes.cpu().numpy().cls
+                conf = results[0].boxes.cpu().numpy().conf
+                for box, label, conf in zip(boxes, labels, conf):
+                    x1, y1, x2, y2 = box
+                    cv2.rectangle(frame, (x1, y1), (x2, y2), COLORS[int(label)], 2)
+                    cv2.putText(
+                        frame,
+                        MODEL.names[int(label)] + ": " + str(round(conf, 2)),
+                        (x1, y1 - 10),
+                        cv2.FONT_HERSHEY_SIMPLEX,
+                        2,
+                        COLORS[int(label)],
+                        2,
+                    )
+            out.write(frame)
+            cv2.imwrite(f"{PROJECT_PATH}/{imgpath}/output.jpg", frame)
+        
+            _,jpeg = cv2.imencode('.jpg', frame)
+            yield (b'--frame\r\n'
+                b'Content-Type: image/jpeg\r\n\r\n' + jpeg.tobytes() + b'\r\n\r\n')
+        
+        cap.release()
+        out.release() 
 
 
 def get_image_frame():
