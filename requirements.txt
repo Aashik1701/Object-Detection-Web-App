@@ -1,8 +1,6 @@
 argparse
 opencv-python
-os
 numpy
 flask
-urllib
 ultralytics
 torch
