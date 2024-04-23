@@ -43,6 +43,7 @@ To run the Object Detection Web Application locally, follow these steps:
 3. Install the required Python packages:
 
    ```bash
+   export PATH="$PATH:~/.local/bin"
    pip install -r requirements.txt
    ```
 
