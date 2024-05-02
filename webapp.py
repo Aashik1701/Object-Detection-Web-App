@@ -3,10 +3,8 @@ import cv2
 import numpy as np
 from flask import Flask, render_template, request, Response
 import os
-from pathlib import Path
-import urllib.parse
+import threading
 from ultralytics import YOLO
-from utils import downloads
 from torch.cuda import is_available
 
 MODEL = YOLO('yolov8n.pt')
@@ -29,12 +27,13 @@ app = Flask(__name__)
 def hello_world():
     return render_template('index.html')
 
-
 @app.route("/", methods=["GET", "POST"])
 def predict_img():
     global imgpath, its_image, video_path, device, source_link
     if request.method == "POST":
-        if 'text' in request.form:
+        if len(request.files)==0 and len(request.form)==0:
+            return render_template('index.html')
+        if len(request.files)==0 and 'text' in request.form:
             # video_link = request.form['text']
             # filepath, is_url = check_source(video_link) # https://drive.google.com/file/d/1OhWnaYeOtMRidwbRpawgoUGhCs2g046h/view?usp=sharing
             # if is_url:
@@ -46,7 +45,7 @@ def predict_img():
             source_link = request.form['text']
             video_feed()
             return render_template('index.html')
-        if 'file' in request.files:
+        if len(request.files)!=0 and 'file' in request.files:
             f = request.files['file']
             basepath = os.path.dirname(__file__)
             filepath = os.path.join(basepath,DOWNLOADS_FOLDER, f.filename)
@@ -171,7 +170,7 @@ def get_video_frame():
         print("source_link: ", source_link)
         # Inference
         results = MODEL.predict(
-            source_link, show=False, verbose=False, save=False, device=device, conf=0.5
+            source_link, show=False, verbose=False, save=False, device=device, conf=0.5, stream=True
         )
         while True:
             for result in results:
@@ -192,11 +191,9 @@ def get_video_frame():
                         COLORS[int(label)],
                         2,
                     )
-                        
-            _,jpeg = cv2.imencode('.jpg', frame)
-            yield (b'--frame\r\n'
-                b'Content-Type: image/jpeg\r\n\r\n' + jpeg.tobytes() + b'\r\n\r\n')
-
+                _,jpeg = cv2.imencode('.jpg', frame)
+                yield (b'--frame\r\n'
+                    b'Content-Type: image/jpeg\r\n\r\n' + jpeg.tobytes() + b'\r\n\r\n')
 
 def get_image_frame():
     global imgpath, its_image
