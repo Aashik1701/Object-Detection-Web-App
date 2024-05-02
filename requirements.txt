@@ -4,3 +4,5 @@ numpy
 flask
 ultralytics
 torch
+pafy
+youtube-dl
