@@ -3,10 +3,8 @@ import cv2
 import numpy as np
 from flask import Flask, render_template, request, Response
 import os
-from pathlib import Path
-import urllib.parse
+import threading
 from ultralytics import YOLO
-from utils import downloads
 from torch.cuda import is_available
 
 MODEL = YOLO('yolov8n.pt')
@@ -17,6 +15,7 @@ imgpath = None
 device =  "cuda:0" if is_available() else "cpu"
 video_path = None
 stream = False
+source_link = None
 its_image = False
 PROJECT_PATH = "runs/detect"
 os.makedirs(f"{PROJECT_PATH}", exist_ok=True)
@@ -28,62 +27,25 @@ app = Flask(__name__)
 def hello_world():
     return render_template('index.html')
 
-def clean_url(url):
-    """Strip auth from URL, i.e. https://url.com/file.txt?auth -> https://url.com/file.txt."""
-    url = Path(url).as_posix().replace(":/", "://")  # Pathlib turns :// -> :/, as_posix() for Windows
-    return urllib.parse.unquote(url).split("?")[0]  # '%2F' to '/', split https://url.com/file.txt?auth
-
-def url2file(url):
-    """Convert URL to filename, i.e. https://url.com/file.txt?auth -> file.txt."""
-    return Path(clean_url(url)).name
-
-def check_file(file, download=True):
-    """Search/download file (if necessary) and return path."""
-    file = str(file).strip()  # convert to string and strip spaces
-    if (
-        not file
-        or ("://" not in file and Path(file).exists())  # '://' check required in Windows Python<3.10
-        or file.lower().startswith("grpc://")
-    ):  # file exists or gRPC Triton images
-        return file
-    if download and file.lower().startswith(("https://", "http://", "rtsp://", "rtmp://", "tcp://")):  # download
-        url = file  # warning: Pathlib turns :// -> :/
-        file = url2file(file)  # '%2F' to '/', split https://url.com/file.txt?auth
-        if Path(f"{DOWNLOADS_FOLDER}/{file}").exists():
-            print(f"Found {clean_url(url)} locally at {file}")  # file already exists
-        else:
-            filename = downloads.safe_download(url=url, file=file, dir=DOWNLOADS_FOLDER, unzip=False)
-            print(f"Downloaded {clean_url(url)} to {filename}")  # download
-        return filename 
-
-def check_source(source):
-    if isinstance(source, (str, int, Path)):
-        source = str(source)
-        is_url = source.lower().startswith(("https://", "http://", "rtsp://", "rtmp://", "tcp://"))
-        # is_file = Path(source).suffix[1:] in (IMG_FORMATS | VID_FORMATS)
-        if is_url:
-            print(f"Warning: Ambiguous source '{source}', assuming URL.")
-            source = check_file(source)  # download
-    else:
-        return
-
-    return source, is_url
-
-
 @app.route("/", methods=["GET", "POST"])
 def predict_img():
-    global imgpath, its_image, video_path, device
+    global imgpath, its_image, video_path, device, source_link
     if request.method == "POST":
-        if 'text' in request.form:
-            video_link = request.form['text']
-            filepath, is_url = check_source(video_link) # https://drive.google.com/file/d/1OhWnaYeOtMRidwbRpawgoUGhCs2g046h/view?usp=sharing
-            if is_url:
-                filepath = str(check_file(filepath))
-                filename = filepath.split('/')[-1]
-            predict_img.imgpath = filepath
-            print("uploaded file path: ", filepath)
-            imgpath, file_extension = (filename.rsplit('.', 1)[0].lower(), filename.rsplit('.', 1)[1].lower())
-        if 'file' in request.files:
+        if len(request.files)==0 and len(request.form)==0:
+            return render_template('index.html')
+        if len(request.files)==0 and 'text' in request.form:
+            # video_link = request.form['text']
+            # filepath, is_url = check_source(video_link) # https://drive.google.com/file/d/1OhWnaYeOtMRidwbRpawgoUGhCs2g046h/view?usp=sharing
+            # if is_url:
+            #     filepath = str(check_file(filepath))
+            #     filename = filepath.split('/')[-1]
+            # predict_img.imgpath = filepath
+            # print("uploaded file path: ", filepath)
+            # imgpath, file_extension = (filename.rsplit('.', 1)[0].lower(), filename.rsplit('.', 1)[1].lower())
+            source_link = request.form['text']
+            video_feed()
+            return render_template('index.html')
+        if len(request.files)!=0 and 'file' in request.files:
             f = request.files['file']
             basepath = os.path.dirname(__file__)
             filepath = os.path.join(basepath,DOWNLOADS_FOLDER, f.filename)
@@ -139,8 +101,9 @@ def predict_img():
 
 
 def get_video_frame():
-    global imgpath, video_path, device
-    if video_path==None:
+    global imgpath, video_path, device, source_link
+
+    if video_path==None and source_link==None:
         mp4_files = f"{PROJECT_PATH}/{imgpath}/output.mp4"
         video = cv2.VideoCapture(mp4_files)  # detected video path
         while True:
@@ -152,7 +115,8 @@ def get_video_frame():
             yield (b'--frame\r\n'
                 b'Content-Type: image/jpeg\r\n\r\n' + jpeg.tobytes() + b'\r\n\r\n')
         video.release()
-    else:
+
+    if video_path!=None and source_link==None:
         cap = cv2.VideoCapture(video_path)
         # Initialize variables
         frame_width = int(cap.get(3))
@@ -200,8 +164,36 @@ def get_video_frame():
                 b'Content-Type: image/jpeg\r\n\r\n' + jpeg.tobytes() + b'\r\n\r\n')
         
         cap.release()
-        out.release() 
-
+        out.release()
+    
+    if source_link!=None:
+        print("source_link: ", source_link)
+        # Inference
+        results = MODEL.predict(
+            source_link, show=False, verbose=False, save=False, device=device, conf=0.5, stream=True
+        )
+        while True:
+            for result in results:
+                frame = result.orig_img
+                # Show results on image
+                boxes = result.boxes.cpu().numpy().xyxy.astype(int)
+                labels = result.boxes.cpu().numpy().cls
+                conf = result.boxes.cpu().numpy().conf
+                for box, label, conf in zip(boxes, labels, conf):
+                    x1, y1, x2, y2 = box
+                    cv2.rectangle(frame, (x1, y1), (x2, y2), COLORS[int(label)], 2)
+                    cv2.putText(
+                        frame,
+                        MODEL.names[int(label)] + ": " + str(round(conf, 2)),
+                        (x1, y1 - 10),
+                        cv2.FONT_HERSHEY_SIMPLEX,
+                        2,
+                        COLORS[int(label)],
+                        2,
+                    )
+                _,jpeg = cv2.imencode('.jpg', frame)
+                yield (b'--frame\r\n'
+                    b'Content-Type: image/jpeg\r\n\r\n' + jpeg.tobytes() + b'\r\n\r\n')
 
 def get_image_frame():
     global imgpath, its_image
