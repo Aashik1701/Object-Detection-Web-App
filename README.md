@@ -60,7 +60,9 @@ To run the Object Detection Web Application locally, follow these steps:
 
 2. Open a web browser and navigate to `http://localhost:8000` to access the application.
 
-3. Upload an image/video file or provide a downloadable link to an image or video for object detection.
+3. Upload an image/video file or provide a accessible link to an image or video for object detection.
+
+*Note: Most of the Youtube videos require special permissions to be accesssible via python API. Please make sure the video is accessible before testing. *
 
 ## Demo
 
