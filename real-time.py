@@ -109,11 +109,12 @@ def predict_img():
 
 
 def get_video_frame():
-    global video_path, device, source_link
+    global imgpath, video_path, device, source_link
 
     if video_path!=None and source_link==None:
         pth = video_path
         video_path = None
+        imgpath = None
         cap = cv2.VideoCapture(pth)
         # Initialize variables
         frame_width = int(cap.get(3))
@@ -193,6 +194,9 @@ def get_video_frame():
                 _,jpeg = cv2.imencode('.jpg', frame)
                 yield (b'--frame\r\n'
                     b'Content-Type: image/jpeg\r\n\r\n' + jpeg.tobytes() + b'\r\n\r\n')
+    else: # clear the image
+        yield (b'--frame\r\n'
+                b'Content-Type: image/jpeg\r\n\r\n' + b'\r\n\r\n')
 
 def get_image_frame():
     global imgpath, its_image
