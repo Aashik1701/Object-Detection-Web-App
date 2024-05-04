@@ -21,7 +21,7 @@ The Object Detection Web Application allows users to upload images or provide do
 - Upload images or provide downloadable links for object detection.
 - Real-time object detection for images and videos.
 - Frame-by-frame analysis for video files.
-- Detection of objects from 81 classes provided by the COCO dataset.
+- Detection of objects from 1000 classes provided by the ImageNet-1K dataset.
 - Easy deployment on Google Cloud Platform or any other hosting service.
 
 ## Installation
