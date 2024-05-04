@@ -62,6 +62,7 @@ def predict_img():
                 if file_extension in IMG_FORMATS:
                     its_image = True
                     frame = cv2.imread(filepath)
+                    print("frame: ", frame)
                     # Inference
                     results = MODEL.predict(
                         frame, show=False, verbose=False, save=False, device=device, conf=0.5
@@ -85,9 +86,9 @@ def predict_img():
                                 COLORS[int(label)],
                                 4,
                             )
-                        cv2.imwrite(f"{PROJECT_PATH}/{imgpath}/output.jpg", frame)
-                        image_feed()
-                        return render_template('index.html')  
+                    cv2.imwrite(f"{PROJECT_PATH}/{imgpath}/output.jpg", frame)
+                    image_feed()
+                    return render_template('index.html')  
                 
                 elif file_extension in VID_FORMATS:
                     its_image = False
