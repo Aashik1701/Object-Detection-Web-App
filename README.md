@@ -28,6 +28,8 @@ The Object Detection Web Application allows users to upload images or provide do
 
 To run the Object Detection Web Application locally, follow these steps:
 
+### For Windows or Mac
+
 1. Clone this repository to your local machine:
 
    ```bash
@@ -45,9 +47,30 @@ To run the Object Detection Web Application locally, follow these steps:
    ```bash
    pip3 install -r requirements.txt
    ```
-   For Linux (optional): 
+
+### For Ubuntu (>18.04)
+
+1. Clone this repository to your local machine:
+
    ```bash
-   export PATH="$PATH:~/.local/bin"
+   git clone https://github.com/your-username/object-detection-web-app.git
+   ```
+
+2. Navigate to the project directory:
+
+   ```bash
+   cd object-detection-web-app
+   ```
+
+3. make `setup.sh` executable:
+   
+   ```bash
+   chmod +x setup.sh
+   ```
+4. setup the repository:
+   
+   ```bash
+   ./setup.sh
    ```
 
 ## Usage
