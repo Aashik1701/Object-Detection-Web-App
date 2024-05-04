@@ -62,7 +62,9 @@ def predict_img():
                 if file_extension in IMG_FORMATS:
                     its_image = True
                     frame = cv2.imread(filepath)
-                    print("frame: ", frame)
+                    if frame is None:
+                        flash("Could not read Image, Please upload a valid image file!")
+                        return render_template('index.html')
                     # Inference
                     results = MODEL.predict(
                         frame, show=False, verbose=False, save=False, device=device, conf=0.5
@@ -117,6 +119,9 @@ def get_video_frame():
         video_path = None
         imgpath = None
         cap = cv2.VideoCapture(pth)
+        if not cap.isOpened():
+            flash("Error opening video file, please upload a valid video!")
+            return render_template('index.html')
         # Initialize variables
         frame_width = int(cap.get(3))
         frame_height = int(cap.get(4))
