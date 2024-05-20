@@ -92,7 +92,7 @@ To run the Object Detection Web Application locally, follow these steps:
 
 ## Demo
 
-To see a live demo of the Object Detection Web Application, visit [Demo](http://34.125.36.167:8000/).
+To see a live demo of the Object Detection Web Application, visit [Demo](http://34.125.128.94:8000/).
 
 ## Contributing
 
